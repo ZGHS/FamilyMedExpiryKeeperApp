@@ -1,17 +1,31 @@
 import { Medicine, ApiResponse } from '../types';
 
+const fetchWithTimeout = async (url: string, options: RequestInit, timeout: number): Promise<Response> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const addMedicine = async (medicine: Medicine): Promise<ApiResponse<Medicine>> => {
   try {
-    const serverUrl = global.serverUrl || 'http://192.168.1.100:3000/api';
+    const serverUrl = (global as any).serverUrl || 'http://192.168.1.100:3000/api';
     
-    const response = await fetch(`${serverUrl}/medicines`, {
+    const response = await fetchWithTimeout(`${serverUrl}/medicines`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(medicine),
-      timeout: 10000, // 10秒超时
-    });
+    }, 10000);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -30,12 +44,11 @@ export const addMedicine = async (medicine: Medicine): Promise<ApiResponse<Medic
 
 export const healthCheck = async (): Promise<ApiResponse<{ message: string }>> => {
   try {
-    const serverUrl = global.serverUrl || 'http://192.168.1.100:3000/api';
+    const serverUrl = (global as any).serverUrl || 'http://192.168.1.100:3000/api';
     
-    const response = await fetch(`${serverUrl}/health`, {
+    const response = await fetchWithTimeout(`${serverUrl}/health`, {
       method: 'GET',
-      timeout: 5000, // 5秒超时
-    });
+    }, 5000);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
